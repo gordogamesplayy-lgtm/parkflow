@@ -191,6 +191,15 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadCsvNameHint: document.getElementById('upload-csv-name-hint'),
         filterShippedMonth: document.getElementById('filter-embarcados-mes'),
 
+        // Fast Active Import Elements
+        cardImportAtivos: document.getElementById('card-import-ativos'),
+        selectImportPatio: document.getElementById('select-import-patio'),
+        inputImportAtivosCsv: document.getElementById('input-import-ativos-csv'),
+        btnTriggerUploadAtivosCsv: document.getElementById('btn-trigger-upload-ativos-csv'),
+        btnConfirmImportAtivosCsv: document.getElementById('btn-confirm-import-ativos-csv'),
+        uploadAtivosCsvNameHint: document.getElementById('upload-ativos-csv-name-hint'),
+        btnHideImportCard: document.getElementById('btn-hide-import-card'),
+
         // Toast Container
         toastContainer: document.getElementById('toast-container'),
 
@@ -2224,6 +2233,104 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         reader.readAsText(file);
     }
+
+    // --- CSV File Import (Embarcados) ---
+    elements.btnTriggerUploadCsv.addEventListener('click', () => {
+        elements.inputImportCsv.click();
+    });
+
+    elements.inputImportCsv.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            elements.uploadCsvNameHint.textContent = `Arquivo selecionado: ${file.name}`;
+            elements.uploadCsvNameHint.style.color = 'var(--color-purple)';
+            elements.btnConfirmImportCsv.removeAttribute('disabled');
+        } else {
+            elements.uploadCsvNameHint.textContent = 'Nenhuma planilha selecionada';
+            elements.uploadCsvNameHint.style.color = '';
+            elements.btnConfirmImportCsv.setAttribute('disabled', 'true');
+        }
+    });
+
+    // --- CSV Fast Active Import (Temporário) ---
+    elements.btnHideImportCard.addEventListener('click', () => {
+        elements.cardImportAtivos.style.display = 'none';
+    });
+
+    elements.btnTriggerUploadAtivosCsv.addEventListener('click', () => {
+        elements.inputImportAtivosCsv.click();
+    });
+
+    elements.selectImportPatio.addEventListener('change', () => {
+        if (elements.inputImportAtivosCsv.files.length > 0 && elements.selectImportPatio.value) {
+            elements.btnConfirmImportAtivosCsv.removeAttribute('disabled');
+        } else {
+            elements.btnConfirmImportAtivosCsv.setAttribute('disabled', 'true');
+        }
+    });
+
+    elements.inputImportAtivosCsv.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            elements.uploadAtivosCsvNameHint.textContent = `Arquivo: ${file.name}`;
+            elements.uploadAtivosCsvNameHint.style.color = 'var(--color-blue)';
+            if (elements.selectImportPatio.value) {
+                elements.btnConfirmImportAtivosCsv.removeAttribute('disabled');
+            }
+        } else {
+            elements.uploadAtivosCsvNameHint.textContent = 'Nenhuma planilha selecionada';
+            elements.uploadAtivosCsvNameHint.style.color = '';
+            elements.btnConfirmImportAtivosCsv.setAttribute('disabled', 'true');
+        }
+    });
+
+    elements.btnConfirmImportAtivosCsv.addEventListener('click', () => {
+        const file = elements.inputImportAtivosCsv.files[0];
+        const patio = elements.selectImportPatio.value;
+        if (!file || !patio) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const rows = text.split(/\r?\n/);
+            let importedCount = 0;
+            
+            // Assuming headers are on row 0, data starts at row 1
+            for (let i = 1; i < rows.length; i++) {
+                if (!rows[i].trim()) continue;
+                const cols = rows[i].split(';');
+                if (cols.length >= 2) { 
+                    const plate = cols[0].trim().toUpperCase();
+                    const model = cols[1].trim();
+                    const bank = cols.length > 2 ? cols[2].trim() : 'N/A';
+                    
+                    const entry = {
+                        id: 'car_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
+                        plate: plate,
+                        model: model,
+                        yard: patio,
+                        bank: bank || 'N/A',
+                        entryTime: new Date().toISOString()
+                    };
+                    activeVehicles.push(entry);
+                    importedCount++;
+                }
+            }
+            
+            saveData();
+            updateDashboardUI();
+            if (isSupabaseActive) syncActiveToSupabase();
+            showToast(`${importedCount} veículos importados com sucesso para o ${patio}!`, 'success');
+            
+            // Reset form
+            elements.inputImportAtivosCsv.value = '';
+            elements.uploadAtivosCsvNameHint.textContent = 'Nenhuma planilha selecionada';
+            elements.uploadAtivosCsvNameHint.style.color = '';
+            elements.selectImportPatio.value = '';
+            elements.btnConfirmImportAtivosCsv.setAttribute('disabled', 'true');
+        };
+        reader.readAsText(file);
+    });
 
     // --- CSV Import & Parsing Logic ---
     function handleImportCsvSelect(e) {
