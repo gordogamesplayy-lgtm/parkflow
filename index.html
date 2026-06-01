@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkFlow | Gestão Multipátios de Veículos</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Supabase JS Client SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <img src="logo-login.jpg" alt="Logo da Empresa" class="login-logo" onerror="this.style.display='none'">
+            <h2 style="color: var(--text-primary); margin-bottom: 1.5rem; text-align: center;">Acesso ao Sistema</h2>
+            <form id="login-form" autocomplete="off">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="login-username" style="color: var(--text-secondary); font-size: 0.85rem;"><i class="fa-solid fa-user"></i> Usuário</label>
+                    <input type="text" id="login-username" placeholder="Digite seu usuário" required style="width: 100%; padding: 0.75rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: #fff; margin-top: 5px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="login-password" style="color: var(--text-secondary); font-size: 0.85rem;"><i class="fa-solid fa-lock"></i> Senha</label>
+                    <input type="password" id="login-password" placeholder="Digite sua senha" required style="width: 100%; padding: 0.75rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: #fff; margin-top: 5px;">
+                </div>
+                <p id="login-error-msg" style="color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem; display: none; text-align: center;">Usuário ou senha incorretos!</p>
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1.5rem; justify-content: center; background: var(--color-blue-gradient); padding: 1rem; border: none; border-radius: 6px; color: #fff; font-weight: 600; cursor: pointer;">
+                    <i class="fa-solid fa-right-to-bracket"></i> Entrar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-container" id="main-app" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-bolt brand-icon"></i>
+                <span class="brand-name">Park<span>Flow</span></span>
+            </div>
+            <nav class="menu">
+                <a href="#" class="menu-item active" id="btn-dashboard">
+                    <i class="fa-solid fa-chart-simple"></i> Dashboard Geral
+                </a>
+                <a href="#" class="menu-item" id="btn-historico-aba">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Histórico de Saídas
+                </a>
+                <a href="#" class="menu-item" id="btn-leilao-aba">
+                    <i class="fa-solid fa-gavel"></i> Fechamento Leilão
+                </a>
+                <a href="#" class="menu-item" id="btn-embarcados-aba">
+                    <i class="fa-solid fa-truck-moving"></i> Embarcados Leilão
+                </a>
+                <a href="#" class="menu-item" id="btn-configuracoes">
+                    <i class="fa-solid fa-gears"></i> Configurações
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
+                    <div class="details">
+                        <p class="name">Operador Diego</p>
+                        <span class="role">Administrador</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-title-wrapper">
+                    <h1 id="page-title">Controle de Veículos nos Pátios</h1>
+                    <p class="subtitle" id="page-subtitle">Rastreamento logístico e monitoramento em tempo real</p>
+                </div>
+                <div class="header-actions">
+                    <div class="datetime-display" id="current-datetime">
+                        <i class="fa-regular fa-calendar"></i>
+                        <span id="live-clock">--:--:-- - --/--/----</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="section-dashboard" class="content-section active">
+                <!-- Backup Weekly Reminder Banner -->
+                <div class="backup-alert-banner" id="backup-reminder-banner" style="display: none; margin-top: 1rem;">
+                    <div class="alert-content">
+                        <i class="fa-solid fa-triangle-exclamation alert-icon"></i>
+                        <div class="alert-text">
+                            <strong>Aviso de Segurança:</strong> Seu último backup foi realizado há mais de 7 dias ou nunca foi feito. Faça um novo backup para proteger seus veículos e faturamentos logados!
+                        </div>
+                    </div>
+                    <button type="button" class="btn-primary btn-small" id="btn-backup-now-banner" style="background:var(--color-orange-gradient);box-shadow:none;">
+                        <i class="fa-solid fa-download"></i> Fazer Backup Agora
+                    </button>
+                </div>
+
+                <!-- Multi-Yard Statistics Cards -->
+                <div class="stats-grid">
+                    <!-- Pátio Roberto Card (Blue Theme) -->
+                    <div class="stat-card blue">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-warehouse"></i>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-label">Pátio Roberto</span>
+                            <h2 class="card-value" id="stat-active-roberto">0</h2>
+                        </div>
+                        <div class="card-trend" id="cap-label-roberto">
+                            <span>Vagas: --</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Pátio Terreno Card (Orange Theme) -->
+                    <div class="stat-card orange">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-square-parking"></i>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-label">Pátio Terreno</span>
+                            <h2 class="card-value" id="stat-active-terreno">0</h2>
+                        </div>
+                        <div class="card-trend" id="cap-label-terreno">
+                            <span>Vagas: --</span>
+                        </div>
+                    </div>
+
+                    <!-- Pátio Barracão Card (Purple Theme) -->
+                    <div class="stat-card purple">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-door-closed"></i>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-label">Pátio Barracão</span>
+                            <h2 class="card-value" id="stat-active-barracao">0</h2>
+                        </div>
+                        <div class="card-trend" id="cap-label-barracao">
+                            <span>Vagas: --</span>
+                        </div>
+                    </div>
+
+                    <!-- Total Systems Card (Green Theme) -->
+                    <div class="stat-card green">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-car-side"></i>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-label">Total nos Pátios</span>
+                            <h2 class="card-value" id="stat-active-total">0</h2>
+                        </div>
+                        <div class="card-trend">
+                            <span>Geral Ocupado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Split Layout -->
+                <div class="dashboard-grid">
+                    <!-- Left: Entry Registration Form -->
+                    <div class="grid-card form-container">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-circle-plus header-icon-blue"></i> Registrar Entrada</h3>
+                            <p>Adicione um veículo em um dos pátios</p>
+                        </div>
+                        
+                        <form id="form-entry" autocomplete="off">
+                            <div class="form-group">
+                                <label for="input-placa">
+                                    <i class="fa-solid fa-address-card"></i> Placa do Veículo
+                                </label>
+                                <input type="text" id="input-placa" placeholder="ABC1D23 ou ABC-1234" required maxlength="8">
+                                <span class="input-hint">Padrão Mercosul ou convencional</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="input-modelo">
+                                    <i class="fa-solid fa-car"></i> Modelo do Veículo
+                                </label>
+                                <input type="text" id="input-modelo" placeholder="Ex: Onix, Hilux, FH 460..." required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="select-patio">
+                                    <i class="fa-solid fa-map-location-dot"></i> Pátio de Destino
+                                </label>
+                                <select id="select-patio" required>
+                                    <option value="" disabled selected>Escolha o pátio...</option>
+                                    <option value="Patio Roberto">Pátio Roberto</option>
+                                    <option value="Patio Terreno">Pátio Terreno</option>
+                                    <option value="Patio Barracao">Pátio Barracão</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="input-entrada" class="flex-between">
+                                    <span><i class="fa-regular fa-clock"></i> Data/Hora Entrada</span>
+                                    <button type="button" class="btn-text-action" id="btn-set-now">
+                                        <i class="fa-solid fa-clock"></i> Definir Agora
+                                    </button>
+                                </label>
+                                <input type="datetime-local" id="input-entrada" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="select-banco">
+                                    <i class="fa-solid fa-building-columns"></i> Banco
+                                </label>
+                                <select id="select-banco" required>
+                                    <!-- Dynamic list loaded from JS -->
+                                </select>
+                                <span class="input-hint">Selecione o banco de financiamento ou integrador</span>
+                            </div>
+
+                            <button type="submit" class="btn-primary" id="btn-submit-entry">
+                                <i class="fa-solid fa-check"></i> Alocar no Pátio
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Right: Active Vehicles List with yard selector tabs -->
+                    <div class="grid-card table-container">
+                        <div class="card-header">
+                            <div class="flex-between">
+                                <div>
+                                    <h3><i class="fa-solid fa-list-check header-icon-green"></i> Localização dos Veículos</h3>
+                                    <p>Lista consolidada e filtros rápidos por pátio</p>
+                                </div>
+                                <div class="table-search">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="search-active" placeholder="Buscar placa, modelo, banco...">
+                                </div>
+                            </div>
+                            
+                            <!-- Yard filter tabs -->
+                            <div class="yard-tabs-wrapper">
+                                <button class="yard-tab active" data-yard="all">Todos os Pátios</button>
+                                <button class="yard-tab" data-yard="Patio Roberto">Pátio Roberto</button>
+                                <button class="yard-tab" data-yard="Patio Terreno">Pátio Terreno</button>
+                                <button class="yard-tab" data-yard="Patio Barracao">Pátio Barracão</button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrapper">
+                            <table id="table-active">
+                                <thead>
+                                    <tr>
+                                        <th>Placa</th>
+                                        <th>Modelo</th>
+                                        <th>Pátio Atual</th>
+                                        <th>Entrada</th>
+                                        <th>Banco</th>
+                                        <th class="text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-active">
+                                    <!-- Dynamic rows loaded here -->
+                                    <tr class="empty-state-row">
+                                        <td colspan="6">
+                                            <div class="empty-state">
+                                                <i class="fa-solid fa-square-parking"></i>
+                                                <p>Nenhum veículo alocado atualmente</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Complete History Section (No Values) -->
+            <section id="section-historico" class="content-section">
+                <div class="grid-card full-width">
+                    <div class="card-header flex-between">
+                        <div>
+                            <h3><i class="fa-solid fa-clock-rotate-left header-icon-purple"></i> Histórico Logístico de Veículos</h3>
+                            <p>Registro completo de entradas e saídas de veículos de todos os pátios</p>
+                        </div>
+                        <div class="filters-wrapper">
+                            <div class="table-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="search-history" placeholder="Buscar no histórico...">
+                            </div>
+                            <button class="btn-secondary" id="btn-export-csv">
+                                <i class="fa-solid fa-file-csv"></i> Exportar CSV
+                            </button>
+                            <button class="btn-danger" id="btn-clear-history">
+                                <i class="fa-solid fa-trash-can"></i> Limpar Histórico
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table id="table-history">
+                            <thead>
+                                <tr>
+                                    <th>Placa</th>
+                                    <th>Modelo</th>
+                                    <th>Pátio Original</th>
+                                    <th>Data Entrada</th>
+                                    <th>Data Saída</th>
+                                    <th>Banco</th>
+                                    <th class="text-right">Tempo Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-history">
+                                <!-- Dynamic history rows loaded here -->
+                                <tr class="empty-state-row">
+                                    <td colspan="7">
+                                        <div class="empty-state">
+                                            <i class="fa-solid fa-receipt"></i>
+                                            <p>Nenhuma movimentação de saída registrada no histórico</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Fechamento Leilão Section (With Values) -->
+            <section id="section-leilao" class="content-section">
+                <div class="grid-card full-width">
+                    <div class="card-header flex-between">
+                        <div>
+                            <h3><i class="fa-solid fa-gavel header-icon-purple"></i> Fechamento e Envio para Leilão</h3>
+                            <p>Veículos coletados e prontos para faturamento e leilão com valores financeiros detalhados</p>
+                        </div>
+                        <div class="filters-wrapper">
+                            <div class="table-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="search-leilao" placeholder="Buscar no leilão...">
+                            </div>
+                            <button class="btn-primary" id="btn-export-leilao-csv" style="background:var(--color-orange-gradient);box-shadow:0 0 15px rgba(255, 145, 0, 0.4);">
+                                <i class="fa-solid fa-file-excel"></i> Exportar Planilha Leilão
+                            </button>
+                            <button class="btn-danger" id="btn-clear-leilao">
+                                <i class="fa-solid fa-trash-can"></i> Limpar Leilões
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper" style="max-height: 520px; overflow-x: auto;">
+                        <table id="table-leilao" style="min-width: 1300px;">
+                            <thead>
+                                <tr>
+                                    <th>Placa</th>
+                                    <th>Modelo</th>
+                                    <th>Valor Trânsito</th>
+                                    <th>Valor Estadia</th>
+                                    <th>Despesas Extras</th>
+                                    <th class="text-green">Valor Total</th>
+                                    <th>Pátio</th>
+                                    <th>Origem</th>
+                                    <th>Destino</th>
+                                    <th>Primeira Estadia</th>
+                                    <th>Última Estadia</th>
+                                    <th>Diárias</th>
+                                    <th>Total Estadias</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-leilao">
+                                <!-- Dynamic rows loaded here -->
+                                <tr class="empty-state-row">
+                                    <td colspan="13">
+                                        <div class="empty-state">
+                                            <i class="fa-solid fa-gavel"></i>
+                                            <p>Nenhum veículo enviado para o leilão ainda</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Veículos Embarcados Section (Historical Values) -->
+            <section id="section-embarcados" class="content-section">
+                <div class="grid-card full-width">
+                    <div class="card-header flex-between">
+                        <div>
+                            <h3><i class="fa-solid fa-truck-moving header-icon-blue"></i> Veículos Embarcados para Leilão</h3>
+                            <p>Consulta definitiva de todos os lotes de veículos que já foram exportados e enviados ao leilão Dealers Club</p>
+                        </div>
+                        <div class="filters-wrapper">
+                            <div class="table-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="search-embarcados" placeholder="Buscar nos embarcados...">
+                            </div>
+                            <div class="table-search" style="min-width: 190px;">
+                                <i class="fa-solid fa-calendar-days" style="color: var(--text-secondary);"></i>
+                                <select id="filter-embarcados-mes" style="background: none; border: none; color: var(--text-primary); outline: none; width: 100%; cursor: pointer; padding-left: 2rem; font-family: inherit; font-size: 0.88rem;">
+                                    <option value="all" style="background: var(--bg-card); color: var(--text-primary);">Todos os Meses</option>
+                                </select>
+                            </div>
+                            <button class="btn-primary" id="btn-export-embarcados-csv" style="background:var(--color-blue-gradient);box-shadow:var(--glow-blue);">
+                                <i class="fa-solid fa-file-excel"></i> Exportar Histórico Geral
+                            </button>
+                            <button class="btn-danger" id="btn-trigger-delete-shipped" style="background: var(--color-orange-gradient); box-shadow: none; font-weight: 600;">
+                                <i class="fa-solid fa-trash-can"></i> Excluir Veículo
+                            </button>
+                            <button class="btn-secondary" id="btn-cancel-delete-shipped" style="display: none; height: 48px; min-width: 100px;">
+                                Cancelar
+                            </button>
+                            <button class="btn-danger" id="btn-clear-embarcados">
+                                <i class="fa-solid fa-trash-can"></i> Limpar Consultas
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Single Collapsible Accordion wrapper for Shipped Lot -->
+                    <div id="shipped-single-accordion" class="accordion-item active" style="margin-top: 1rem;">
+                        <div class="accordion-header" id="shipped-accordion-header" onclick="this.closest('.accordion-item').classList.toggle('active')">
+                            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                                <i class="fa-solid fa-truck-moving text-blue" style="font-size: 1.15rem;"></i>
+                                <span style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);" id="shipped-accordion-title">Lote de Embarcados (Todos os Meses)</span>
+                                <span class="badge-total" id="shipped-accordion-badge" style="background: rgba(0, 242, 254, 0.1); color: var(--color-blue); padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.78rem; font-weight: 700; border: 1px solid rgba(0, 242, 254, 0.15);">0 veículo(s)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1.5rem;">
+                                <span style="font-weight: 600; color: var(--color-success); font-size: 0.95rem;" id="shipped-accordion-revenue">Faturamento: R$ 0,00</span>
+                                <i class="fa-solid fa-chevron-down accordion-arrow" style="color: var(--text-secondary); transition: transform 0.3s ease;"></i>
+                            </div>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="table-wrapper" style="max-height: 520px; overflow-x: auto; background: rgba(0, 0, 0, 0.2);">
+                                <table id="table-embarcados" style="min-width: 1300px; border-collapse: collapse;">
+                                    <thead>
+                                        <tr>
+                                            <th>Placa</th>
+                                            <th>Modelo</th>
+                                            <th>Valor Trânsito</th>
+                                            <th>Valor Estadia</th>
+                                            <th>Despesas Extras</th>
+                                            <th class="text-green">Valor Total</th>
+                                            <th>Pátio</th>
+                                            <th>Origem</th>
+                                            <th>Destino</th>
+                                            <th>Primeira Estadia</th>
+                                            <th>Última Estadia</th>
+                                            <th>Diárias</th>
+                                            <th>Total Estadias</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody-embarcados">
+                                        <tr class="empty-state-row">
+                                            <td colspan="13">
+                                                <div class="empty-state">
+                                                    <i class="fa-solid fa-truck-moving"></i>
+                                                    <p>Nenhum veículo embarcado para leilão registrado</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration Section (Yard Capacities & Dynamic Banks) -->
+            <section id="section-configuracoes" class="content-section">
+                <!-- Card 1: Capacidades -->
+                <div class="grid-card config-container">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-gears header-icon-blue"></i> Configurações de Capacidades</h3>
+                        <p>Ajuste as capacidades máximas permitidas em cada um dos pátios</p>
+                    </div>
+
+                    <div class="config-form">
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="config-cap-roberto">Capacidade Pátio Roberto</label>
+                                <input type="number" id="config-cap-roberto" min="1" value="15">
+                                <span class="input-hint">Limite de veículos no pátio interno</span>
+                            </div>
+
+                            <div class="form-group half">
+                                <label for="config-cap-terreno">Capacidade Pátio Terreno</label>
+                                <input type="number" id="config-cap-terreno" min="1" value="25">
+                                <span class="input-hint">Limite de veículos no terreno aberto</span>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="config-cap-barracao">Capacidade Pátio Barracão</label>
+                                <input type="number" id="config-cap-barracao" min="1" value="10">
+                                <span class="input-hint">Limite de veículos na área coberta</span>
+                            </div>
+
+                            <div class="form-group half">
+                                <label for="config-system-mode">Modo Operacional</label>
+                                <select id="config-system-mode" disabled>
+                                    <option value="logistic" selected>Logístico Puro (Sem Cobrança)</option>
+                                </select>
+                                <span class="input-hint">Estilo de fluxo logístico do sistema</span>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn-primary" id="btn-save-configs">
+                            <i class="fa-solid fa-floppy-disk"></i> Salvar Configurações
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 2: Cadastro de Bancos -->
+                <div class="grid-card config-container">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-building-columns header-icon-purple"></i> Gerenciamento de Bancos</h3>
+                        <p>Cadastre e remova bancos, integradoras ou financiadoras da lista de seleção</p>
+                    </div>
+
+                    <div class="config-form">
+                        <form id="form-add-bank" autocomplete="off" style="padding: 0; gap: 1rem; flex-direction: row; align-items: flex-end; display: flex;">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="input-new-bank">Nome do Novo Banco</label>
+                                <input type="text" id="input-new-bank" placeholder="Ex: Volkswagen, Mercado Pago, GM, C6 Bank..." required style="width: 100%;">
+                            </div>
+                            <button type="submit" class="btn-primary" style="height: 48px; white-space: nowrap;">
+                                <i class="fa-solid fa-plus"></i> Cadastrar
+                            </button>
+                        </form>
+
+                        <div class="registered-banks-section" style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+                            <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
+                                <i class="fa-solid fa-list-ul text-blue"></i> Bancos Cadastrados no Sistema
+                            </h4>
+                            <div class="banks-list-wrapper" id="registered-banks-list">
+                                <!-- Dynamic list of banks rendered from JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Backups de Segurança -->
+                <div class="grid-card config-container" style="margin-top: 1.5rem;">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-database header-icon-blue"></i> Backups de Segurança</h3>
+                        <p>Exporte todas as tabelas de pátios, históricos e bancos do sistema ou recupere dados antigos</p>
+                    </div>
+
+                    <div class="config-form" style="padding: 2rem; gap: 1.5rem;">
+                        <div class="backup-status-wrapper" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                            <div>
+                                <span style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Último Backup Realizado:</span>
+                                <strong style="font-size: 0.95rem; color: var(--text-primary);" id="backup-last-date-label">Nenhum backup registrado</strong>
+                            </div>
+                            <button type="button" class="btn-primary" id="btn-create-backup">
+                                <i class="fa-solid fa-download"></i> Criar Arquivo de Backup
+                            </button>
+                        </div>
+
+                        <div class="restore-wrapper" style="border-top: 1px dashed var(--border-color); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-secondary); margin: 0;"><i class="fa-solid fa-upload text-blue"></i> Restaurar Dados via Backup</h4>
+                            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; width: 100%;">
+                                <input type="file" id="input-backup-file" accept=".json" style="display: none;">
+                                <button type="button" class="btn-secondary" id="btn-trigger-upload-file" style="height: 48px; flex: 1; min-width: 200px;">
+                                    <i class="fa-solid fa-file-import"></i> Selecionar Arquivo de Backup (.json)
+                                </button>
+                                <button type="button" class="btn-danger" id="btn-restore-backup" style="height: 48px; white-space: nowrap; min-width: 160px;" disabled>
+                                    <i class="fa-solid fa-circle-check"></i> Restaurar Backup
+                                </button>
+                            </div>
+                            <span class="input-hint" id="upload-file-name-hint" style="font-style: italic;">Nenhum arquivo de backup selecionado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Importação de Histórico Antigo (Excel) -->
+                <div class="grid-card config-container" style="margin-top: 1.5rem;">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-file-import header-icon-purple"></i> Importar Planilhas Antigas (Excel)</h3>
+                        <p>Carregue suas planilhas de leilão antigas salvas em formato CSV (separado por ponto e vírgula ";") diretamente na aba Embarcados</p>
+                    </div>
+
+                    <div class="config-form" style="padding: 2rem; gap: 1.5rem;">
+                        <div class="import-csv-wrapper" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: var(--radius-md); font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5;">
+                                <strong style="color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
+                                    <i class="fa-solid fa-circle-info text-blue"></i> Instruções importantes para Importação de Planilhas:
+                                </strong>
+                                <ol style="margin-left: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                                    <li>Abra sua planilha antiga no Excel, vá em <strong>Salvar Como</strong> e escolha a opção <strong>CSV (separado por ponto e vírgula) (*.csv)</strong>.</li>
+                                    <li>O cabeçalho deve conter exatamente as colunas na ordem ou nomes correspondentes (ex: <i>PLACA, MODELO, VALOR TRANSI, VALOR ES, DESPESAS EXTRAS, ORIGEM, DESTINO, PRIMEIRA ESTADIA, ÚLTIMA ESTADIA</i>).</li>
+                                    <li>Campos financeiros vazios serão assumidos como R$ 0,00 automaticamente.</li>
+                                </ol>
+                            </div>
+                            
+                            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; width: 100%;">
+                                <input type="file" id="input-import-csv" accept=".csv" style="display: none;">
+                                <button type="button" class="btn-secondary" id="btn-trigger-upload-csv" style="height: 48px; flex: 1; min-width: 220px;">
+                                    <i class="fa-solid fa-file-csv"></i> Selecionar Planilha CSV (.csv)
+                                </button>
+                                <button type="button" class="btn-primary" id="btn-confirm-import-csv" style="height: 48px; white-space: nowrap; min-width: 160px; background:var(--color-purple-gradient); box-shadow: 0 0 15px rgba(234, 141, 247, 0.3);" disabled>
+                                    <i class="fa-solid fa-file-import"></i> Carregar Lote na Tabela
+                                </button>
+                            </div>
+                            <span class="input-hint" id="upload-csv-name-hint" style="font-style: italic;">Nenhuma planilha selecionada</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Integração com Supabase (Nuvem) -->
+                <div class="grid-card config-container" style="margin-top: 1.5rem;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h3><i class="fa-solid fa-cloud header-icon-cyan"></i> Sincronização em Nuvem (Supabase)</h3>
+                            <p>Conecte seu sistema a um banco de dados online gratuito para sincronizar o computador e o celular em tempo real</p>
+                        </div>
+                        <div class="supabase-status-badge offline" id="supabase-status-badge">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Desconectado (Dados Locais)</span>
+                        </div>
+                    </div>
+
+                    <div class="config-form" style="padding: 2rem; gap: 1.5rem;">
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="input-supabase-url"><i class="fa-solid fa-link text-cyan"></i> URL do Projeto Supabase</label>
+                                <input type="url" id="input-supabase-url" placeholder="https://xxxxxxxxxxxxxxxxxxxx.supabase.co" style="width: 100%;">
+                                <span class="input-hint">Encontrado em Project Settings > API</span>
+                            </div>
+                            <div class="form-group half">
+                                <label for="input-supabase-key"><i class="fa-solid fa-key text-cyan"></i> Chave Pública (Anon Key)</label>
+                                <input type="password" id="input-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width: 100%;">
+                                <span class="input-hint">Encontrado em Project Settings > API > anon public</span>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; width: 100%;">
+                            <button type="button" class="btn-primary" id="btn-save-supabase" style="height: 48px; flex: 1; min-width: 200px; background: var(--color-cyan-gradient); box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);">
+                                <i class="fa-solid fa-plug"></i> Conectar e Sincronizar
+                            </button>
+                            <button type="button" class="btn-danger" id="btn-disconnect-supabase" style="height: 48px; white-space: nowrap; min-width: 160px; display: none;">
+                                <i class="fa-solid fa-plug-circle-xmark"></i> Desconectar Nuvem
+                            </button>
+                        </div>
+
+                        <!-- Script SQL Expansível -->
+                        <div class="sql-instructions-wrapper" style="border-top: 1px dashed var(--border-color); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <button type="button" class="accordion-trigger-button" id="btn-toggle-sql-accordion" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md); width: 100%; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--text-primary); font-family: inherit; font-size: 0.9rem; font-weight: 600;">
+                                <span><i class="fa-solid fa-terminal text-cyan" style="margin-right: 0.5rem;"></i> Como criar as tabelas no Supabase (Passo Necessário)</span>
+                                <i class="fa-solid fa-chevron-down" id="sql-accordion-arrow"></i>
+                            </button>
+                            
+                            <div class="sql-accordion-content" id="sql-accordion-content" style="display: none; flex-direction: column; gap: 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: var(--radius-md);">
+                                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                                    Antes de conectar, você deve criar as tabelas no seu banco Supabase. Copie o script SQL abaixo, acesse o painel do seu Supabase, clique em <strong>SQL Editor</strong> ➡️ <strong>New Query</strong>, cole o script e clique em <strong>Run</strong>.
+                                </p>
+                                <div style="position: relative;">
+                                    <pre class="sql-code-block" style="background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.1); padding: 1rem; border-radius: var(--radius-sm); font-family: monospace; font-size: 0.8rem; color: #94a3b8; overflow-x: auto; max-height: 250px; text-align: left;"><code id="sql-code-text">-- 1. Veículos Ativos no Pátio
+CREATE TABLE IF NOT EXISTS active_yards (
+    id TEXT PRIMARY KEY,
+    plate TEXT NOT NULL,
+    model TEXT NOT NULL,
+    yard TEXT NOT NULL,
+    bank TEXT,
+    "entryTime" TEXT
+);
+
+-- 2. Histórico de Saídas Comuns
+CREATE TABLE IF NOT EXISTS history_yards (
+    id TEXT PRIMARY KEY,
+    plate TEXT NOT NULL,
+    model TEXT NOT NULL,
+    yard TEXT NOT NULL,
+    bank TEXT,
+    "entryTime" TEXT,
+    "exitTime" TEXT,
+    duration TEXT
+);
+
+-- 3. Fechamento Leilão (Lote Ativo)
+CREATE TABLE IF NOT EXISTS auction_history (
+    id TEXT PRIMARY KEY,
+    plate TEXT NOT NULL,
+    model TEXT NOT NULL,
+    "valorTransi" NUMERIC DEFAULT 0,
+    "valorEs" NUMERIC DEFAULT 0,
+    "despesasExtras" NUMERIC DEFAULT 0,
+    "valorTotal" NUMERIC DEFAULT 0,
+    yard TEXT,
+    origem TEXT,
+    destino TEXT,
+    "entryTime" TEXT,
+    "exitTime" TEXT,
+    diarias INTEGER DEFAULT 0,
+    "totalEstadias" NUMERIC DEFAULT 0,
+    bank TEXT
+);
+
+-- 4. Embarcados Leilão (Histórico Geral)
+CREATE TABLE IF NOT EXISTS shipped_history (
+    id TEXT PRIMARY KEY,
+    plate TEXT NOT NULL,
+    model TEXT NOT NULL,
+    "valorTransi" NUMERIC DEFAULT 0,
+    "valorEs" NUMERIC DEFAULT 0,
+    "despesasExtras" NUMERIC DEFAULT 0,
+    "valorTotal" NUMERIC DEFAULT 0,
+    yard TEXT,
+    origem TEXT,
+    destino TEXT,
+    "entryTime" TEXT,
+    "exitTime" TEXT,
+    diarias INTEGER DEFAULT 0,
+    "totalEstadias" NUMERIC DEFAULT 0,
+    bank TEXT
+);
+
+-- 5. Bancos Cadastrados
+CREATE TABLE IF NOT EXISTS registered_banks (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL
+);
+
+-- 6. Configurações de Vagas
+CREATE TABLE IF NOT EXISTS configs_yards (
+    id TEXT PRIMARY KEY,
+    value INTEGER NOT NULL
+);
+
+-- 7. Vistorias Móveis (Checklist)
+CREATE TABLE IF NOT EXISTS vehicle_checklists (
+    id TEXT PRIMARY KEY,
+    placa TEXT NOT NULL,
+    marca TEXT,
+    modelo TEXT,
+    chassi TEXT,
+    ano TEXT,
+    data TEXT,
+    "estadoVeiculo" TEXT,
+    "originalDoc" BOOLEAN DEFAULT false,
+    "originalKey" BOOLEAN DEFAULT false,
+    "spareKey" BOOLEAN DEFAULT false,
+    manual BOOLEAN DEFAULT false,
+    extinguisher BOOLEAN DEFAULT false,
+    triangle BOOLEAN DEFAULT false,
+    "wheelWrench" BOOLEAN DEFAULT false,
+    jack BOOLEAN DEFAULT false,
+    radio BOOLEAN DEFAULT false,
+    "cdPlayer" BOOLEAN DEFAULT false,
+    multimedia BOOLEAN DEFAULT false,
+    "pneuDianteiroDireito" JSONB,
+    "pneuDianteiroEsquerdo" JSONB,
+    "pneuTraseiroDireito" JSONB,
+    "pneuTraseiroEsquerdo" JSONB,
+    "estepeTire" JSONB,
+    fotos JSONB,
+    "cidadeOrigem" TEXT,
+    destino TEXT,
+    "cidadeDestino" TEXT,
+    "dataOrigem" TEXT,
+    "dataDestino" TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Inserir dados padrão para as tabelas iniciais
+INSERT INTO configs_yards (id, value) VALUES 
+('capRoberto', 15), 
+('capTerreno', 25), 
+('capBarracao', 10) 
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO registered_banks (name) VALUES 
+('Volkswagen'), ('Mercado Pago'), ('GM'), ('C6 Bank')
+ON CONFLICT (name) DO NOTHING;</code></pre>
+                                    <button type="button" class="btn-primary btn-small" id="btn-copy-sql" style="position: absolute; top: 0.5rem; right: 0.5rem; background: var(--color-cyan-gradient); padding: 0.4rem 0.8rem; font-size: 0.75rem; box-shadow: none;">
+                                        <i class="fa-solid fa-copy"></i> Copiar SQL
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Yard Transfer Modal -->
+    <div class="modal-backdrop" id="modal-transfer">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-truck-ramp-box text-blue"></i> Transferir Veículo entre Pátios</h3>
+                <button class="modal-close-btn" id="btn-close-transfer">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="vehicle-checkout-badge">
+                    <div class="plate-display" id="modal-transfer-plate">ABC-1234</div>
+                    <div class="model-display" id="modal-transfer-model">Scania G420</div>
+                </div>
+
+                <div class="details-list">
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-solid fa-map-marker-alt text-orange"></i> Pátio Atual</span>
+                        <span class="detail-value text-orange" id="modal-transfer-current-yard">Pátio Roberto</span>
+                    </div>
+
+                    <div class="detail-item" style="border: none;">
+                        <span class="detail-label"><i class="fa-solid fa-map-location-dot text-blue"></i> Novo Pátio de Destino</span>
+                        <select id="modal-select-transfer-yard" class="inline-select-input" style="max-width: 220px;">
+                            <option value="Patio Roberto">Pátio Roberto</option>
+                            <option value="Patio Terreno">Pátio Terreno</option>
+                            <option value="Patio Barracao">Pátio Barracão</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="btn-cancel-transfer">Cancelar</button>
+                <button class="btn-primary" id="btn-confirm-transfer">
+                    <i class="fa-solid fa-right-left"></i> Efetuar Transferência
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simplifed Exit / Check-Out Modal (No fees) -->
+    <div class="modal-backdrop" id="modal-checkout">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-right-from-bracket text-green"></i> Confirmar Saída do Veículo</h3>
+                <button class="modal-close-btn" id="btn-close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="vehicle-checkout-badge">
+                    <div class="plate-display" id="modal-plate-badge">ABC-1234</div>
+                    <div class="model-display" id="modal-model-badge">Volkswagen Golf</div>
+                </div>
+
+                <div class="details-list">
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-regular fa-clock text-blue"></i> Entrada</span>
+                        <span class="detail-value" id="modal-time-entry">--/--/---- --:--</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-regular fa-circle-check text-green"></i> Saída</span>
+                        <div class="detail-value-input">
+                            <input type="datetime-local" id="modal-time-exit" class="inline-datetime-input">
+                            <button type="button" class="btn-icon-only" id="btn-modal-set-now" title="Definir como Agora">
+                                <i class="fa-solid fa-clock"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-solid fa-location-arrow text-orange"></i> Pátio de Origem</span>
+                        <span class="detail-value text-orange" id="modal-registered-yard">Pátio Terreno</span>
+                    </div>
+
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-solid fa-building-columns text-purple"></i> Banco</span>
+                        <span class="detail-value" id="modal-registered-bank">--</span>
+                    </div>
+
+
+
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-solid fa-hourglass-half text-blue"></i> Tempo de Permanência</span>
+                        <span class="detail-value text-blue" id="modal-duration">0 horas e 0 minutos</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="btn-cancel-checkout">Cancelar</button>
+                <button class="btn-success" id="btn-confirm-checkout">
+                    <i class="fa-solid fa-circle-check"></i> Registrar Saída Logística
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auction Checkout Modal (With Fees and details) -->
+    <div class="modal-backdrop" id="modal-leilao-checkout">
+        <div class="modal-card" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-gavel text-orange"></i> Fechamento e Envio para Leilão</h3>
+                <button class="modal-close-btn" id="btn-close-leilao-modal">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <div class="vehicle-checkout-badge">
+                    <div class="plate-display" id="modal-leilao-plate-badge">ABC-1234</div>
+                    <div class="model-display" id="modal-leilao-model-badge">Volkswagen Golf</div>
+                </div>
+
+                <div class="details-list">
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-solid fa-warehouse text-blue"></i> Pátio de Origem</span>
+                        <span class="detail-value text-orange" id="modal-leilao-registered-yard">Pátio Terreno</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-solid fa-building-columns text-purple"></i> Banco</span>
+                        <span class="detail-value" id="modal-leilao-registered-bank">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-regular fa-clock text-muted"></i> Primeira Estadia (Entrada)</span>
+                        <span class="detail-value" id="modal-leilao-time-entry">--/--/---- --:--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label"><i class="fa-regular fa-circle-check text-orange"></i> Última Estadia (Saída)</span>
+                        <div class="detail-value-input">
+                            <input type="datetime-local" id="modal-leilao-time-exit" class="inline-datetime-input">
+                            <button type="button" class="btn-icon-only" id="btn-modal-leilao-set-now" title="Definir como Agora" style="width: 32px; height: 32px;">
+                                <i class="fa-solid fa-clock"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-form" style="padding: 0; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        <i class="fa-solid fa-dollar-sign text-green"></i> Lançamento de Valores e Rotas
+                    </h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="input-leilao-transi"><i class="fa-solid fa-truck"></i> Valor Trânsito (R$)</label>
+                            <input type="number" id="input-leilao-transi" min="0" step="0.01" value="0.00" required>
+                            <span class="input-hint">Custo de guincho/frete</span>
+                        </div>
+                        <div class="form-group half">
+                            <label for="input-leilao-es"><i class="fa-solid fa-calendar-day"></i> Valor Estadia (R$/dia)</label>
+                            <input type="number" id="input-leilao-es" min="0" step="0.01" value="35.00" required>
+                            <span class="input-hint">Preço por diária</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="input-leilao-extras"><i class="fa-solid fa-hand-holding-dollar"></i> Despesas Extras (R$)</label>
+                            <input type="number" id="input-leilao-extras" min="0" step="0.01" value="0.00" required>
+                            <span class="input-hint">Outros custos ou taxas</span>
+                        </div>
+                        <div class="form-group half">
+                            <label for="input-leilao-origem"><i class="fa-solid fa-location-dot"></i> Origem de Coleta</label>
+                            <input type="text" id="input-leilao-origem" placeholder="Ex: Local da Apreensão..." required style="width: 100%;">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label for="input-leilao-destino"><i class="fa-solid fa-gavel"></i> Destino da Coleta (Leilão)</label>
+                            <input type="text" id="input-leilao-destino" value="DEALERS CLUB em Suzano" placeholder="Ex: DEALERS CLUB em Suzano..." required style="width: 100%;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumo dos Cálculos -->
+                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: var(--radius-md); margin-top: 1rem; display: flex; flex-direction: column; gap: 0.6rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.88rem; color: var(--text-secondary);">
+                         <span>Quantidade de Diárias:</span>
+                         <span style="font-weight: 700; color: var(--text-primary);" id="label-leilao-diarias">1 diária(s)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.88rem; color: var(--text-secondary);">
+                         <span>Valor Total Estadias:</span>
+                         <span style="font-weight: 700; color: var(--text-primary);" id="label-leilao-total-estadias">R$ 35,00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border-color); padding-top: 0.6rem; font-size: 1.05rem; font-weight: 700;">
+                         <span class="text-green">VALOR TOTAL GERAL:</span>
+                         <span class="text-green" id="label-leilao-total-geral">R$ 35,00</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="btn-cancel-leilao">Cancelar</button>
+                <button class="btn-success" id="btn-confirm-leilao" style="background:var(--color-orange-gradient);box-shadow:none;">
+                    <i class="fa-solid fa-gavel"></i> Confirmar Envio Leilão
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
