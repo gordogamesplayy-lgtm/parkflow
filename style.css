@@ -1733,21 +1733,26 @@
 
     /* Print Styles for Checklist Modal */
     @media print {
-        body * {
-            visibility: hidden;
+        @page {
+            size: A4;
+            margin: 1cm;
         }
-        #modal-checklist-print, #modal-checklist-print * {
-            visibility: visible;
-        }
-        #modal-checklist-print {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
+        body {
+            background: white !important;
             margin: 0;
             padding: 0;
+        }
+        body > :not(#modal-checklist-print) {
+            display: none !important;
+        }
+        #modal-checklist-print {
+            position: static !important;
+            display: block !important;
+            width: 100% !important;
+            height: auto !important;
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         .hide-on-print {
             display: none !important;
@@ -1755,12 +1760,21 @@
         .modal-card {
             box-shadow: none !important;
             border: none !important;
-            max-width: none !important;
+            max-width: 100% !important;
             width: 100% !important;
             transform: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
         }
         .modal-backdrop {
             background: transparent !important;
+            padding: 0 !important;
+            align-items: flex-start !important;
+        }
+        #checklist-print-area {
+            max-height: none !important;
+            overflow: visible !important;
             padding: 0 !important;
         }
     }
