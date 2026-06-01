@@ -702,6 +702,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners Setup ---
     function setupEventListeners() {
+        // Logout Button
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.addEventListener('click', () => {
+                sessionStorage.removeItem('parkflow_logged_in');
+                location.reload();
+            });
+        }
+
         // Tab Navigation (Dashboard, History, Settings)
         elements.btnDashboard.addEventListener('click', (e) => {
             e.preventDefault();
