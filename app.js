@@ -1344,6 +1344,30 @@ document.addEventListener('DOMContentLoaded', () => {
         drawSignature('canvas-destino-mot', destino.assinaturaMotorista);
         drawSignature('canvas-destino-resp', destino.assinaturaResponsavel);
 
+        // Process photos
+        const photosGrid = document.getElementById('print-photos-grid');
+        const photosContainer = document.getElementById('print-photos-container');
+        if (photosGrid && photosContainer) {
+            photosGrid.innerHTML = ''; // clear
+            
+            if (data.fotos && (data.fotos.Frente || data.fotos.Traseira || data.fotos['Lateral Esquerda'] || data.fotos['Lateral Direita'])) {
+                photosContainer.style.display = 'block';
+                const labels = ['Frente', 'Traseira', 'Lateral Esquerda', 'Lateral Direita'];
+                labels.forEach(label => {
+                    if (data.fotos[label]) {
+                        photosGrid.innerHTML += `
+                            <div style="text-align: center; width: 100%;">
+                                <img src="${data.fotos[label]}" alt="${label}" style="max-width: 100%; max-height: 200px; border: 1px solid #ccc; border-radius: 4px; object-fit: contain;">
+                                <p style="margin: 2px 0 0 0; font-size: 11px; font-weight: bold;">${label}</p>
+                            </div>
+                        `;
+                    }
+                });
+            } else {
+                photosContainer.style.display = 'none';
+            }
+        }
+
         elements.modalChecklistPrint.classList.add('active');
     }
 

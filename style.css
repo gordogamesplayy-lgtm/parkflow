@@ -1735,7 +1735,11 @@
     @media print {
         @page {
             size: A4;
-            margin: 1cm;
+            margin: 0.5cm;
+        }
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
         body {
             background: white !important;
@@ -1776,5 +1780,9 @@
             max-height: none !important;
             overflow: visible !important;
             padding: 0 !important;
+            zoom: 0.85;
+        }
+        #print-photos-grid img {
+            max-height: 130px !important;
         }
     }
