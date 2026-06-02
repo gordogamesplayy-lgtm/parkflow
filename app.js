@@ -1292,7 +1292,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('print-ano').textContent = data.ano || 'N/A';
         document.getElementById('print-data').textContent = formatDate(new Date(car.entryTime));
         document.getElementById('print-banco').textContent = car.bank;
-        document.getElementById('print-patio').textContent = getYardNameDisplay(car.yard);
+        
+        const patioElement = document.getElementById('print-patio');
+        if (patioElement) patioElement.textContent = getYardNameDisplay(car.yard);
 
         // Populate Sim/Nao
         const setYN = (idPrefix, val) => {
