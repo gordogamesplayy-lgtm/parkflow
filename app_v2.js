@@ -1310,7 +1310,12 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.photosViewGrid.innerHTML = '';
         
         const fotos = car.checklist_data.fotos;
-        const labels = ['Frente', 'Traseira', 'Lateral Esquerda', 'Lateral Direita'];
+        const labels = [
+            'Frente', 'Traseira', 'Lateral Direita', 'Lateral Esquerda',
+            'Teto Frente', 'Teto Trás', 'Roda Dianteira Direita', 'Roda Traseira Direita',
+            'Roda Dianteira Esquerda', 'Roda Traseira Esquerda', 'Estepe', 'Triângulo',
+            'Chave de Rodas', 'Macaco'
+        ];
         let hasFotos = false;
         
         labels.forEach(label => {
@@ -1409,9 +1414,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (photosGrid && photosContainer) {
             photosGrid.innerHTML = ''; // clear
             
-            if (data.fotos && (data.fotos.Frente || data.fotos.Traseira || data.fotos['Lateral Esquerda'] || data.fotos['Lateral Direita'])) {
+            if (data.fotos && Object.keys(data.fotos).length > 0) {
                 photosContainer.style.display = 'block';
-                const labels = ['Frente', 'Traseira', 'Lateral Esquerda', 'Lateral Direita'];
+                const labels = [
+                    'Frente', 'Traseira', 'Lateral Direita', 'Lateral Esquerda',
+                    'Teto Frente', 'Teto Trás', 'Roda Dianteira Direita', 'Roda Traseira Direita',
+                    'Roda Dianteira Esquerda', 'Roda Traseira Esquerda', 'Estepe', 'Triângulo',
+                    'Chave de Rodas', 'Macaco'
+                ];
                 labels.forEach(label => {
                     if (data.fotos[label]) {
                         photosGrid.innerHTML += `
