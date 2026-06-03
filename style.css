@@ -1780,9 +1780,9 @@
             max-height: none !important;
             overflow: visible !important;
             padding: 0 !important;
-            zoom: 0.85;
+            zoom: 0.70;
         }
         #print-photos-grid img {
-            max-height: 130px !important;
+            max-height: 100px !important;
         }
     }

@@ -194,6 +194,12 @@ document.addEventListener('DOMContentLoaded', () => {
         modalChecklistPrint: document.getElementById('modal-checklist-print'),
         btnCloseChecklistModal: document.getElementById('btn-close-checklist-modal'),
         btnPrintChecklist: document.getElementById('btn-print-checklist'),
+
+        // Photos View Modal Elements
+        modalPhotosView: document.getElementById('modal-photos-view'),
+        btnClosePhotosModal: document.getElementById('btn-close-photos-modal'),
+        photosModalPlate: document.getElementById('photos-modal-plate'),
+        photosViewGrid: document.getElementById('photos-view-grid'),
         
         // Fechamento Leilão Elements
         btnLeilaoTab: document.getElementById('btn-leilao-aba'),
@@ -895,6 +901,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Checklist Events
         elements.btnCloseChecklistModal.addEventListener('click', closeChecklistModal);
         elements.btnPrintChecklist.addEventListener('click', () => { window.print(); });
+
+        // Photos Events
+        elements.btnClosePhotosModal.addEventListener('click', closePhotosModal);
         
         // Format License Plate Input automatically as user types (Only letters and numbers, max 7 chars, no hyphens)
         elements.inputPlaca.addEventListener('input', (e) => {
@@ -1144,6 +1153,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="btn-primary btn-small action-view-checklist-btn" data-id="${car.id}" title="Visualizar Checklist" style="background:var(--color-blue-gradient);box-shadow:none;border:none;">
                                 <i class="fa-solid fa-file-signature"></i> Checklist
                             </button>
+                            <button class="btn-primary btn-small action-view-photos-btn" data-id="${car.id}" title="Visualizar Fotos" style="background:var(--color-purple-gradient);box-shadow:none;border:none;">
+                                <i class="fa-solid fa-camera"></i> Fotos
+                            </button>
                             ` : ''}
                             <button class="btn-secondary btn-small action-edit-bank-btn" data-id="${car.id}" title="Alterar Banco">
                                 <i class="fa-solid fa-pen-to-square"></i> Banco
@@ -1199,6 +1211,13 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', (e) => {
                 const carId = e.currentTarget.getAttribute('data-id');
                 openChecklistModal(carId);
+            });
+        });
+
+        document.querySelectorAll('.action-view-photos-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const carId = e.currentTarget.getAttribute('data-id');
+                openPhotosModal(carId);
             });
         });
 
@@ -1274,6 +1293,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Checklist Modal Handling ---
     function closeChecklistModal() {
         elements.modalChecklistPrint.classList.remove('active');
+    }
+
+    function closePhotosModal() {
+        elements.modalPhotosView.classList.remove('active');
+    }
+
+    function openPhotosModal(carId) {
+        const car = activeVehicles.find(item => item.id === carId);
+        if (!car || !car.checklist_data || !car.checklist_data.fotos) {
+            showToast('Nenhuma foto disponível para este veículo.', 'error');
+            return;
+        }
+        
+        elements.photosModalPlate.textContent = car.plate;
+        elements.photosViewGrid.innerHTML = '';
+        
+        const fotos = car.checklist_data.fotos;
+        const labels = ['Frente', 'Traseira', 'Lateral Esquerda', 'Lateral Direita'];
+        let hasFotos = false;
+        
+        labels.forEach(label => {
+            if (fotos[label]) {
+                hasFotos = true;
+                elements.photosViewGrid.innerHTML += `
+                    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; text-align: center;">
+                        <img src="${fotos[label]}" alt="${label}" style="width: 100%; height: auto; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+                        <p style="margin-top: 10px; font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${label}</p>
+                    </div>
+                `;
+            }
+        });
+        
+        if (!hasFotos) {
+            showToast('As fotos foram salvas mas estão vazias.', 'warning');
+            return;
+        }
+        
+        elements.modalPhotosView.classList.add('active');
     }
 
     function openChecklistModal(carId) {
